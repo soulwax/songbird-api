@@ -1,4 +1,8 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import {
+    LastfmSpiceUpRequestDto,
+    LastfmSpiceUpResponseDto,
+} from './dtos/spice-up.dto';
 import { LastfmService } from './lastfm.service';
 
 @Controller('api/lastfm')
@@ -56,6 +60,13 @@ export class LastfmController {
         @Query('limit') limit?: number,
     ) {
         return this.lastfmService.getSimilarTracks(artist, track, limit);
+    }
+
+    @Post('recommendations/spice-up')
+    async spiceUpPlaylist(
+        @Body() body: LastfmSpiceUpRequestDto,
+    ): Promise<LastfmSpiceUpResponseDto> {
+        return this.lastfmService.spiceUpPlaylist(body);
     }
 }
 
