@@ -20,7 +20,8 @@ describe('AppController', () => {
     it('should render the landing page markup', () => {
       const html = appController.getLandingPage();
       expect(html).toContain('<!DOCTYPE html>');
-      expect(html).toContain('Songbird API');
+      expect(html).toContain('Songbird API Playground');
+      expect(html).toContain('id="playground"');
       expect(html).toContain('/openapi.yaml');
     });
   });
