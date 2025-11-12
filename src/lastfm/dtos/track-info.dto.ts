@@ -1,3 +1,5 @@
+// File: src/lastfm/dtos/track-info.dto.ts
+
 export class TrackInfoDto {
     name: string;
     artist: string;
@@ -18,4 +20,3 @@ export class TrackInfoDto {
         }>;
     };
 }
-

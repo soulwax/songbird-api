@@ -1,3 +1,5 @@
+// File: src/lastfm/dtos/spice-up.dto.ts
+
 export class LastfmSongInputDto {
     name?: string;
     artist?: string;
@@ -22,4 +24,3 @@ export class LastfmSpiceUpResponseDto {
     }>;
     foundSongs: number;
 }
-

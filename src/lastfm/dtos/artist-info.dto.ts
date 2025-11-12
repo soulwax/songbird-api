@@ -1,3 +1,5 @@
+// File: src/lastfm/dtos/artist-info.dto.ts
+
 export class ArtistInfoDto {
     name: string;
     mbid?: string;
@@ -41,4 +43,3 @@ export class ArtistInfoDto {
         content?: string;
     };
 }
-

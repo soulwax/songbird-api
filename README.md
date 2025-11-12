@@ -201,6 +201,60 @@ A NestJS REST API that integrates with both the **Spotify Web API** and **Last.f
   }
   ```
 
+#### `POST /api/lastfm/recommendations/spice-up-with-deezer`
+- **Description**: Get Last.fm recommendations and automatically convert them to Deezer track IDs in one request
+- **Request Body**:
+  ```json
+  {
+    "songs": [
+      {
+        "name": "string (optional)",
+        "artist": "string (optional)",
+        "album": "string (optional)"
+      }
+    ],
+    "limit": number (optional, default: 20, max: 100),
+    "mode": "strict" | "normal" | "diverse" (optional, default: "normal"),
+    "convertToDeezer": boolean (optional, default: true)
+  }
+  ```
+- **Response**: `LastfmSpiceUpWithDeezerResponseDto` with recommendations including Deezer IDs and conversion statistics
+- **Response Format**:
+  ```json
+  {
+    "mode": "string",
+    "inputSongs": number,
+    "foundSongs": number,
+    "recommendations": [
+      {
+        "name": "string",
+        "artist": "string",
+        "url": "string",
+        "match": number,
+        "mbid": "string",
+        "deezerId": number | null
+      }
+    ],
+    "deezerConversion": {
+      "converted": number,
+      "total": number
+    }
+  }
+  ```
+- **Example**:
+  ```json
+  POST /api/lastfm/recommendations/spice-up-with-deezer
+  {
+    "songs": [
+      { "name": "Creep", "artist": "Radiohead" },
+      { "name": "Bohemian Rhapsody", "artist": "Queen" }
+    ],
+    "limit": 30,
+    "mode": "diverse",
+    "convertToDeezer": true
+  }
+  ```
+
 ---
 
 ### Deezer API Routes (`/api/deezer`)
@@ -400,6 +454,133 @@ Example: `GET /api/lastfm/track/info?artist=Radiohead&track=Creep`
    - For read operations, signature is optional
 4. Service makes HTTP request to `https://ws.audioscrobbler.com/2.0`
 5. Response is returned as-is (Last.fm API returns JSON)
+
+### Last.fm to Deezer Conversion Flow
+
+#### Option 1: Two-Step Manual Flow
+
+**Step 1: Get Last.fm Recommendations**
+```http
+POST /api/lastfm/recommendations/spice-up
+Content-Type: application/json
+
+{
+  "songs": [
+    { "name": "Creep", "artist": "Radiohead" },
+    { "name": "Bohemian Rhapsody", "artist": "Queen" }
+  ],
+  "limit": 20,
+  "mode": "normal"
+}
+```
+
+**Response:**
+```json
+{
+  "mode": "normal",
+  "inputSongs": 2,
+  "foundSongs": 2,
+  "recommendations": [
+    {
+      "name": "Karma Police",
+      "artist": "Radiohead",
+      "url": "https://www.last.fm/music/Radiohead/_/Karma+Police",
+      "match": 0.85
+    },
+    {
+      "name": "Paranoid Android",
+      "artist": "Radiohead",
+      "url": "https://www.last.fm/music/Radiohead/_/Paranoid+Android",
+      "match": 0.82
+    }
+    // ... more recommendations
+  ]
+}
+```
+
+**Step 2: Convert to Deezer IDs**
+```http
+POST /api/deezer/tracks/convert
+Content-Type: application/json
+
+{
+  "tracks": [
+    { "name": "Karma Police", "artist": "Radiohead" },
+    { "name": "Paranoid Android", "artist": "Radiohead" }
+    // ... extract from recommendations array
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "converted": 2,
+  "total": 2,
+  "tracks": [
+    { "name": "Karma Police", "artist": "Radiohead", "deezerId": 3135554 },
+    { "name": "Paranoid Android", "artist": "Radiohead", "deezerId": 3135555 }
+  ]
+}
+```
+
+#### Option 2: Combined One-Step Flow (Recommended)
+
+**Single Request:**
+```http
+POST /api/lastfm/recommendations/spice-up-with-deezer
+Content-Type: application/json
+
+{
+  "songs": [
+    { "name": "Creep", "artist": "Radiohead" },
+    { "name": "Bohemian Rhapsody", "artist": "Queen" }
+  ],
+  "limit": 20,
+  "mode": "normal",
+  "convertToDeezer": true
+}
+```
+
+**Response (includes Deezer IDs):**
+```json
+{
+  "mode": "normal",
+  "inputSongs": 2,
+  "foundSongs": 2,
+  "recommendations": [
+    {
+      "name": "Karma Police",
+      "artist": "Radiohead",
+      "url": "https://www.last.fm/music/Radiohead/_/Karma+Police",
+      "match": 0.85,
+      "deezerId": 3135554
+    },
+    {
+      "name": "Paranoid Android",
+      "artist": "Radiohead",
+      "url": "https://www.last.fm/music/Radiohead/_/Paranoid+Android",
+      "match": 0.82,
+      "deezerId": 3135555
+    }
+    // ... more recommendations with deezerId
+  ],
+  "deezerConversion": {
+    "converted": 18,
+    "total": 20
+  }
+}
+```
+
+**Flow:**
+1. Request hits `LastfmController.spiceUpPlaylistWithDeezer()`
+2. Controller calls `LastfmService.spiceUpPlaylistWithDeezer()`
+3. Service gets Last.fm recommendations (same as spice-up endpoint)
+4. Service extracts track names and artists from recommendations
+5. Service calls `DeezerService.convertTracksToDeezerIds()`
+6. DeezerService searches Deezer API for each track
+7. Deezer IDs are merged back into recommendations
+8. Response includes both Last.fm data and Deezer IDs
 
 ## Key Features
 

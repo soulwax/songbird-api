@@ -1,3 +1,5 @@
+// File: src/deezer/deezer.service.ts
+
 import { HttpService } from '@nestjs/axios';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
@@ -145,4 +147,3 @@ export class DeezerService {
         return results;
     }
 }
-

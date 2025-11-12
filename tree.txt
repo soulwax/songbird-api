@@ -10,12 +10,35 @@ spotify-recommendation-app
 ├───tree.txt
 ├───tsconfig.build.json
 ├───tsconfig.json
+├───.github/
+│   └───resources/
+│       └───songbird.png
 ├───src/
 │   ├───app.controller.spec.ts
 │   ├───app.controller.ts
 │   ├───app.module.ts
 │   ├───app.service.ts
 │   ├───main.ts
+│   ├───deezer/
+│   │   ├───deezer.controller.ts
+│   │   ├───deezer.module.ts
+│   │   ├───deezer.service.ts
+│   │   └───dtos/
+│   │       ├───convert.dto.ts
+│   │       └───index.ts
+│   ├───lastfm/
+│   │   ├───lastfm.controller.ts
+│   │   ├───lastfm.module.ts
+│   │   ├───lastfm.service.ts
+│   │   ├───auth/
+│   │   │   └───lastfm-auth.service.ts
+│   │   └───dtos/
+│   │       ├───artist-info.dto.ts
+│   │       ├───index.ts
+│   │       ├───search.dto.ts
+│   │       ├───spice-up-with-deezer.dto.ts
+│   │       ├───spice-up.dto.ts
+│   │       └───track-info.dto.ts
 │   └───spotify/
 │       ├───spotify.controller.ts
 │       ├───spotify.module.ts
@@ -28,6 +51,7 @@ spotify-recommendation-app
 │           ├───index.ts
 │           ├───recommendation.dto.ts
 │           ├───search.dto.ts
+│           ├───spice-up.dto.ts
 │           └───track.dto.ts
 └───test/
     ├───app.e2e-spec.ts

@@ -1,4 +1,8 @@
+// File: src/lastfm/lastfm.controller.ts
+
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { DeezerService } from '../deezer/deezer.service';
+import { LastfmSpiceUpWithDeezerResponseDto } from './dtos/spice-up-with-deezer.dto';
 import {
     LastfmSpiceUpRequestDto,
     LastfmSpiceUpResponseDto,
@@ -7,7 +11,10 @@ import { LastfmService } from './lastfm.service';
 
 @Controller('api/lastfm')
 export class LastfmController {
-    constructor(private readonly lastfmService: LastfmService) {}
+    constructor(
+        private readonly lastfmService: LastfmService,
+        private readonly deezerService: DeezerService,
+    ) {}
 
     @Get('track/info')
     async getTrackInfo(
@@ -68,5 +75,16 @@ export class LastfmController {
     ): Promise<LastfmSpiceUpResponseDto> {
         return this.lastfmService.spiceUpPlaylist(body);
     }
-}
 
+    @Post('recommendations/spice-up-with-deezer')
+    async spiceUpPlaylistWithDeezer(
+        @Body() body: LastfmSpiceUpRequestDto & { convertToDeezer?: boolean },
+    ): Promise<LastfmSpiceUpWithDeezerResponseDto> {
+        const { convertToDeezer = true, ...spiceUpRequest } = body;
+        return this.lastfmService.spiceUpPlaylistWithDeezer(
+            spiceUpRequest,
+            this.deezerService,
+            convertToDeezer,
+        );
+    }
+}

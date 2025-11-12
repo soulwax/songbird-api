@@ -1,3 +1,5 @@
+// File: src/spotify/dtos/spice-up.dto.ts
+
 import { TrackDto } from './track.dto';
 
 export class SongInputDto {
@@ -22,4 +24,3 @@ export class SpiceUpResponseDto {
         initialPoolSize: number;
     }>;
 }
-

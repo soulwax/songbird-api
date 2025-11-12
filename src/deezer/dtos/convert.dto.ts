@@ -1,3 +1,5 @@
+// File: src/deezer/dtos/convert.dto.ts
+
 export class TrackToConvertDto {
     name: string;
     artist?: string;
@@ -16,4 +18,3 @@ export class ConvertToDeezerResponseDto {
         deezerId: number | null;
     }>;
 }
-

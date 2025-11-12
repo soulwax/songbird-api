@@ -1,3 +1,5 @@
+// File: src/lastfm/dtos/search.dto.ts
+
 export class LastfmSearchTrackDto {
     name: string;
     artist: string;
@@ -23,4 +25,3 @@ export class LastfmSearchResultDto {
         total: string;
     };
 }
-

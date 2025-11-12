@@ -1,3 +1,5 @@
+// File: src/lastfm/auth/lastfm-auth.service.ts
+
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
@@ -68,4 +70,3 @@ export class LastfmAuthService {
     return new URLSearchParams(queryParams).toString();
   }
 }
-

@@ -1,3 +1,5 @@
+// File: src/deezer/deezer.controller.ts
+
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { DeezerService } from './deezer.service';
 import {
@@ -51,4 +53,3 @@ export class DeezerController {
         };
     }
 }
-

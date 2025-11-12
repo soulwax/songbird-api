@@ -1,3 +1,5 @@
+// File: src/deezer/deezer.module.ts
+
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -10,5 +12,6 @@ import { DeezerService } from './deezer.service';
     providers: [DeezerService],
     exports: [DeezerService],
 })
-export class DeezerModule {}
-
+export class DeezerModule {
+    // Export DeezerService for use in other modules
+}

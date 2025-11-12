@@ -1,3 +1,5 @@
+// File: src/lastfm/lastfm.service.ts
+
 import { HttpService } from '@nestjs/axios';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { firstValueFrom } from 'rxjs';
@@ -7,6 +9,7 @@ import {
     LastfmSpiceUpRequestDto,
     LastfmSpiceUpResponseDto,
 } from './dtos/spice-up.dto';
+import { LastfmSpiceUpWithDeezerResponseDto } from './dtos/spice-up-with-deezer.dto';
 
 @Injectable()
 export class LastfmService {
@@ -361,5 +364,55 @@ export class LastfmService {
                 return tracks.slice(0, limit);
         }
     }
-}
 
+    /**
+     * Get recommendations and optionally convert to Deezer IDs
+     * This method requires DeezerService to be injected
+     */
+    async spiceUpPlaylistWithDeezer(
+        request: LastfmSpiceUpRequestDto,
+        deezerService?: any, // DeezerService injected from controller
+        convertToDeezer: boolean = false,
+    ): Promise<LastfmSpiceUpWithDeezerResponseDto> {
+        // First, get Last.fm recommendations
+        const lastfmResponse = await this.spiceUpPlaylist(request);
+
+        const response: LastfmSpiceUpWithDeezerResponseDto = {
+            mode: lastfmResponse.mode,
+            inputSongs: lastfmResponse.inputSongs,
+            foundSongs: lastfmResponse.foundSongs,
+            recommendations: lastfmResponse.recommendations.map((rec) => ({
+                ...rec,
+                deezerId: undefined,
+            })),
+        };
+
+        // If conversion is requested and DeezerService is available
+        if (convertToDeezer && deezerService) {
+            try {
+                const tracksToConvert = lastfmResponse.recommendations.map((rec) => ({
+                    name: rec.name,
+                    artist: rec.artist,
+                }));
+
+                const deezerResults = await deezerService.convertTracksToDeezerIds(tracksToConvert);
+
+                // Merge Deezer IDs into recommendations
+                response.recommendations = lastfmResponse.recommendations.map((rec, index) => ({
+                    ...rec,
+                    deezerId: deezerResults[index]?.deezerId || null,
+                }));
+
+                response.deezerConversion = {
+                    converted: deezerResults.filter((r) => r.deezerId !== null).length,
+                    total: deezerResults.length,
+                };
+            } catch (error) {
+                this.logger.error('Failed to convert to Deezer IDs', error);
+                // Continue without Deezer IDs if conversion fails
+            }
+        }
+
+        return response;
+    }
+}
