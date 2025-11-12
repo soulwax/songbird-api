@@ -36,3 +36,5 @@ export class ConvertToDeezerResponseDto {
     @ApiProperty({ type: [ConvertedTrackResultDto], description: 'Conversion results per track' })
     tracks: ConvertedTrackResultDto[];
 }
+
+export class FindTrackIdResponseDto extends ConvertedTrackResultDto {}
