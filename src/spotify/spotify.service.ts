@@ -8,7 +8,9 @@ import {
     RecommendationQueryDto,
     RecommendationResponseDto,
     SearchTracksDto,
-    TrackDto,
+    SpiceUpRequestDto,
+    SpiceUpResponseDto,
+    TrackDto
 } from './dtos/index';
 
 @Injectable()
@@ -126,6 +128,18 @@ export class SpotifyService {
             if (query.target_popularity !== undefined)
                 params.target_popularity = Number(query.target_popularity);
 
+            // Add any additional parameters (min/max values, etc.)
+            Object.keys(query).forEach((key) => {
+                if (
+                    !['seed_tracks', 'seed_artists', 'seed_genres', 'limit', 'market', 'target_danceability', 'target_popularity'].includes(key)
+                ) {
+                    const value = (query as any)[key];
+                    if (value !== undefined && value !== null) {
+                        params[key] = typeof value === 'number' ? value : Number(value);
+                    }
+                }
+            });
+
             // Default values for diversity
             if (params.target_danceability === undefined)
                 params.target_danceability = 0.5;
@@ -215,5 +229,174 @@ export class SpotifyService {
                 throw new Error(`Failed to get recommendations: ${error.message}`);
             }
         }
+    }
+
+    /**
+     * Get recommendations to spice up a list of songs
+     * Supports three diversity modes: strict, normal, diverse
+     */
+    async spiceUpPlaylist(request: SpiceUpRequestDto): Promise<SpiceUpResponseDto> {
+        if (!request.songs || request.songs.length === 0) {
+            throw new BadRequestException('At least one song is required');
+        }
+
+        const mode = request.mode || 'normal';
+        const limit = Math.min(request.limit || 20, 100);
+
+        // Search for each song and collect track/artist IDs
+        const trackIds: string[] = [];
+        const artistIds: Set<string> = new Set();
+
+        this.logger.debug(`Processing ${request.songs.length} songs for spice-up with mode: ${mode}`);
+
+        for (const song of request.songs) {
+            try {
+                // Build search query from available fields
+                const searchTerms: string[] = [];
+                if (song.name) searchTerms.push(song.name);
+                if (song.artist) searchTerms.push(song.artist);
+                if (song.album) searchTerms.push(song.album);
+
+                if (searchTerms.length === 0) {
+                    this.logger.warn('Skipping song with no searchable fields', song);
+                    continue;
+                }
+
+                const searchQuery = searchTerms.join(' ');
+                const searchResults = await this.searchTracks({
+                    query: searchQuery,
+                    limit: 1,
+                });
+
+                if (searchResults.length > 0) {
+                    const track = searchResults[0];
+                    trackIds.push(track.id);
+                    // Collect unique artist IDs
+                    track.artists.forEach((artist: { id: string }) => {
+                        artistIds.add(artist.id);
+                    });
+                } else {
+                    this.logger.warn(`No results found for: ${searchQuery}`);
+                }
+            } catch (error) {
+                this.logger.warn(`Failed to search for song: ${JSON.stringify(song)}`, error);
+            }
+        }
+
+        if (trackIds.length === 0 && artistIds.size === 0) {
+            throw new BadRequestException(
+                'Could not find any matching tracks or artists. Please check your song information.',
+            );
+        }
+
+        // Apply diversity mode settings
+        const diversityParams = this.getDiversityParams(mode, trackIds, Array.from(artistIds));
+
+        // Get recommendations with diversity params
+        const recQuery: RecommendationQueryDto & Record<string, any> = {
+            seed_tracks: diversityParams.seed_tracks,
+            seed_artists: diversityParams.seed_artists,
+            limit,
+            target_danceability: diversityParams.target_danceability,
+            target_popularity: diversityParams.target_popularity,
+            ...diversityParams.additionalParams,
+        };
+
+        const recommendations = await this.getRecommendations(recQuery);
+
+        return {
+            mode,
+            inputSongs: request.songs.length,
+            recommendations: recommendations.tracks,
+            seeds: recommendations.seeds,
+        };
+    }
+
+    /**
+     * Get diversity parameters based on mode
+     */
+    private getDiversityParams(
+        mode: 'strict' | 'normal' | 'diverse',
+        trackIds: string[],
+        artistIds: string[],
+    ): {
+        seed_tracks?: string;
+        seed_artists?: string;
+        target_danceability?: number;
+        target_popularity?: number;
+        additionalParams: Record<string, any>;
+    } {
+        const params: {
+            seed_tracks?: string;
+            seed_artists?: string;
+            target_danceability?: number;
+            target_popularity?: number;
+            additionalParams: Record<string, any>;
+        } = {
+            additionalParams: {},
+        };
+
+        switch (mode) {
+            case 'strict':
+                // Strict: Use fewer seeds, tighter ranges, specific targets
+                params.seed_tracks = trackIds.slice(0, 2).join(',');
+                if (artistIds.length > 0) {
+                    params.seed_artists = artistIds.slice(0, 1).join(',');
+                }
+                params.target_danceability = 0.5;
+                params.target_popularity = 50;
+                // Narrow ranges for strict mode
+                params.additionalParams = {
+                    min_danceability: 0.4,
+                    max_danceability: 0.6,
+                    min_popularity: 40,
+                    max_popularity: 60,
+                    min_energy: 0.4,
+                    max_energy: 0.6,
+                };
+                break;
+
+            case 'normal':
+                // Normal: Balanced approach
+                params.seed_tracks = trackIds.slice(0, 3).join(',');
+                if (artistIds.length > 0) {
+                    params.seed_artists = artistIds.slice(0, 2).join(',');
+                }
+                params.target_danceability = 0.5;
+                params.target_popularity = 50;
+                // Moderate ranges
+                params.additionalParams = {
+                    min_danceability: 0.3,
+                    max_danceability: 0.7,
+                    min_popularity: 30,
+                    max_popularity: 70,
+                    min_energy: 0.3,
+                    max_energy: 0.7,
+                };
+                break;
+
+            case 'diverse':
+                // Diverse: More seeds, wider ranges, more variety
+                params.seed_tracks = trackIds.slice(0, 5).join(',');
+                if (artistIds.length > 0) {
+                    params.seed_artists = artistIds.slice(0, 3).join(',');
+                }
+                params.target_danceability = 0.5;
+                params.target_popularity = 50;
+                // Wide ranges for maximum diversity
+                params.additionalParams = {
+                    min_danceability: 0.2,
+                    max_danceability: 0.8,
+                    min_popularity: 20,
+                    max_popularity: 80,
+                    min_energy: 0.2,
+                    max_energy: 0.8,
+                    min_valence: 0.2,
+                    max_valence: 0.8,
+                };
+                break;
+        }
+
+        return params;
     }
 }

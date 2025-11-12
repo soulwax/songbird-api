@@ -4,6 +4,8 @@ import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import {
     RecommendationQueryDto,
     RecommendationResponseDto,
+    SpiceUpRequestDto,
+    SpiceUpResponseDto,
     TrackDto
 } from './dtos/index';
 import { SpotifyService } from './spotify.service';
@@ -46,5 +48,12 @@ export class SpotifyController {
             target_danceability: 0.6,
             target_popularity: 60,
         });
+    }
+
+    @Post('recommendations/spice-up')
+    async spiceUpPlaylist(
+        @Body() body: SpiceUpRequestDto,
+    ): Promise<SpiceUpResponseDto> {
+        return this.spotifyService.spiceUpPlaylist(body);
     }
 }
