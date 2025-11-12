@@ -9,4 +9,3 @@ export class RecommendationsFromSearchRequestDto {
     @ApiPropertyOptional({ description: 'Number of recommendations to return (1-100)', default: 20 })
     limit?: number;
 }
-

@@ -10,6 +10,10 @@ A NestJS REST API that integrates with both the **Spotify Web API** and **Last.f
 
 ### Root Endpoint
 
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/` | Health check |
+
 #### `GET /`
 - **Description**: Health check endpoint
 - **Response**: `"Hello World!"`
@@ -17,6 +21,13 @@ A NestJS REST API that integrates with both the **Spotify Web API** and **Last.f
 ---
 
 ### Spotify API Routes (`/api/spotify`)
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/spotify/search/tracks` | Search for tracks on Spotify |
+| `GET` | `/api/spotify/recommendations` | Get recommendations using seeds |
+| `POST` | `/api/spotify/recommendations/from-search` | Search for a seed track and get recommendations |
+| `POST` | `/api/spotify/recommendations/spice-up` | Generate recommendations with diversity modes |
 
 #### `GET /api/spotify/search/tracks`
 - **Description**: Search for tracks on Spotify
@@ -106,6 +117,17 @@ A NestJS REST API that integrates with both the **Spotify Web API** and **Last.f
 ---
 
 ### Last.fm API Routes (`/api/lastfm`)
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/lastfm/track/info` | Get Last.fm track details |
+| `GET` | `/api/lastfm/artist/info` | Get Last.fm artist details |
+| `GET` | `/api/lastfm/track/search` | Search tracks on Last.fm |
+| `GET` | `/api/lastfm/artist/search` | Search artists on Last.fm |
+| `GET` | `/api/lastfm/artist/top-tracks` | Get an artist's top tracks |
+| `GET` | `/api/lastfm/track/similar` | Get similar tracks |
+| `POST` | `/api/lastfm/recommendations/spice-up` | Generate Last.fm recommendations |
+| `POST` | `/api/lastfm/recommendations/spice-up-with-deezer` | Generate recommendations and convert to Deezer IDs |
 
 #### `GET /api/lastfm/track/info`
 - **Description**: Get detailed information about a track
@@ -258,6 +280,12 @@ A NestJS REST API that integrates with both the **Spotify Web API** and **Last.f
 ---
 
 ### Deezer API Routes (`/api/deezer`)
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/deezer/search/tracks` | Search tracks on Deezer |
+| `GET` | `/api/deezer/track/find-id` | Find Deezer track ID by name and artist |
+| `POST` | `/api/deezer/tracks/convert` | Convert multiple tracks to Deezer IDs |
 
 #### `GET /api/deezer/search/tracks`
 - **Description**: Search for tracks on Deezer
@@ -640,3 +668,9 @@ Content-Type: application/json
 - `npm run start:prod`: Run production build
 - `npm run lint`: Run ESLint
 - `npm test`: Run tests
+
+## API Documentation Prep
+
+- All controllers and DTOs are annotated with Swagger decorators (`@nestjs/swagger`)
+- Ready for future integration with Swagger UI (e.g., expose docs via `/api/docs`)
+- Request/response schemas are described using dedicated DTO classes with `@ApiProperty` metadata

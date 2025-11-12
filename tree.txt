@@ -3,6 +3,7 @@ spotify-recommendation-app
 ├───.gitignore
 ├───.prettierrc
 ├───eslint.config.mjs
+├───LICENSE.md
 ├───nest-cli.json
 ├───package-lock.json
 ├───package.json
@@ -50,6 +51,7 @@ spotify-recommendation-app
 │       └───dtos/
 │           ├───index.ts
 │           ├───recommendation.dto.ts
+│           ├───recommendations-from-search.dto.ts
 │           ├───search.dto.ts
 │           ├───spice-up.dto.ts
 │           └───track.dto.ts

@@ -46,6 +46,9 @@ export class SpotifyController {
     @ApiQuery({ name: 'seed_artists', required: false, description: 'Comma-separated Spotify artist IDs' })
     @ApiQuery({ name: 'seed_genres', required: false, description: 'Comma-separated genre names' })
     @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of recommendations (1-100)' })
+    @ApiQuery({ name: 'market', required: false, description: 'Market code (ISO 3166-1 alpha-2)' })
+    @ApiQuery({ name: 'target_danceability', required: false, type: Number, description: 'Target danceability (0.0-1.0)' })
+    @ApiQuery({ name: 'target_popularity', required: false, type: Number, description: 'Target popularity (0-100)' })
     @ApiResponse({ status: 200, type: RecommendationResponseDto })
     async getRecommendations(
         @Query() queryParams: RecommendationQueryDto,

@@ -8,6 +8,7 @@ import {
     LastfmSongInputDto,
     LastfmSpiceUpRequestDto,
     LastfmSpiceUpResponseDto,
+    LastfmRecommendationDto,
 } from './dtos/spice-up.dto';
 import { LastfmSpiceUpWithDeezerResponseDto } from './dtos/spice-up-with-deezer.dto';
 
@@ -225,13 +226,7 @@ export class LastfmService {
         const diversitySettings = this.getDiversitySettings(mode);
 
         // Search for each song and collect similar tracks
-        const allSimilarTracks: Map<string, {
-            name: string;
-            artist: string;
-            url: string;
-            match: number;
-            mbid?: string;
-        }> = new Map();
+        const allSimilarTracks: Map<string, LastfmRecommendationDto> = new Map();
 
         let foundSongs = 0;
 
@@ -459,7 +454,7 @@ export class LastfmService {
 
         // Convert to array and sort by match score (higher is better)
         let recommendations = Array.from(allSimilarTracks.values()).sort(
-            (a, b) => b.match - a.match,
+            (a, b) => (b.match ?? 0) - (a.match ?? 0),
         );
 
         // Apply diversity filtering based on mode
@@ -496,18 +491,22 @@ export class LastfmService {
      * Apply diversity filter to recommendations
      */
     private applyDiversityFilter(
-        tracks: Array<{ name: string; artist: string; url: string; match: number; mbid?: string }>,
+        tracks: LastfmRecommendationDto[],
         mode: 'strict' | 'normal' | 'diverse',
         limit: number,
-    ): Array<{ name: string; artist: string; url: string; match: number; mbid?: string }> {
+    ): LastfmRecommendationDto[] {
         switch (mode) {
             case 'strict':
                 // Strict: Take top matches only, prioritize high match scores
-                return tracks.filter((t) => t.match >= 0.5).slice(0, limit);
+                return tracks.filter((t) => (t.match ?? 0) >= 0.5).slice(0, limit);
             case 'normal':
                 // Normal: Balanced selection, mix of high and medium matches
-                const highMatches = tracks.filter((t) => t.match >= 0.3).slice(0, Math.floor(limit * 0.7));
-                const mediumMatches = tracks.filter((t) => t.match >= 0.1 && t.match < 0.3).slice(0, Math.ceil(limit * 0.3));
+                const highMatches = tracks
+                    .filter((t) => (t.match ?? 0) >= 0.3)
+                    .slice(0, Math.floor(limit * 0.7));
+                const mediumMatches = tracks
+                    .filter((t) => (t.match ?? 0) >= 0.1 && (t.match ?? 0) < 0.3)
+                    .slice(0, Math.ceil(limit * 0.3));
                 return [...highMatches, ...mediumMatches].slice(0, limit);
             case 'diverse':
                 // Diverse: Include wider range of matches, more variety
