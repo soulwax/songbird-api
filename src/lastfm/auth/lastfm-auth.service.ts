@@ -50,15 +50,19 @@ export class LastfmAuthService {
   /**
    * Build query string with API key and signature
    */
-  buildQueryString(params: Record<string, string>): string {
+  buildQueryString(params: Record<string, string>, requireSignature: boolean = false): string {
     const apiKey = this.getApiKey();
-    const queryParams = {
+    const queryParams: Record<string, string> = {
       ...params,
       api_key: apiKey,
     };
     
-    const signature = this.generateApiSignature(queryParams);
-    queryParams.api_sig = signature;
+    // Only add signature for authenticated methods (write operations)
+    if (requireSignature) {
+      const signature = this.generateApiSignature(queryParams);
+      queryParams.api_sig = signature;
+    }
+    
     queryParams.format = 'json';
 
     return new URLSearchParams(queryParams).toString();
