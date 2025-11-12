@@ -2,19 +2,37 @@
 
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import {
+    ApiBody,
+    ApiOperation,
+    ApiQuery,
+    ApiResponse,
+    ApiTags,
+} from '@nestjs/swagger';
+import {
     RecommendationQueryDto,
     RecommendationResponseDto,
+    RecommendationsFromSearchRequestDto,
     SpiceUpRequestDto,
     SpiceUpResponseDto,
-    TrackDto
+    TrackDto,
 } from './dtos/index';
 import { SpotifyService } from './spotify.service';
 
+@ApiTags('Spotify')
 @Controller('api/spotify')
 export class SpotifyController {
     constructor(private readonly spotifyService: SpotifyService) { }
 
     @Get('search/tracks')
+    @ApiOperation({ summary: 'Search for tracks on Spotify' })
+    @ApiQuery({ name: 'query', required: true, description: 'Search query string' })
+    @ApiQuery({
+        name: 'limit',
+        required: false,
+        type: Number,
+        description: 'Number of results to return (default 10)',
+    })
+    @ApiResponse({ status: 200, type: [TrackDto] })
     async searchTracks(
         @Query('query') query: string,
         @Query('limit') limit?: number,
@@ -23,6 +41,12 @@ export class SpotifyController {
     }
 
     @Get('recommendations')
+    @ApiOperation({ summary: 'Get Spotify recommendations using seeds' })
+    @ApiQuery({ name: 'seed_tracks', required: false, description: 'Comma-separated Spotify track IDs' })
+    @ApiQuery({ name: 'seed_artists', required: false, description: 'Comma-separated Spotify artist IDs' })
+    @ApiQuery({ name: 'seed_genres', required: false, description: 'Comma-separated genre names' })
+    @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of recommendations (1-100)' })
+    @ApiResponse({ status: 200, type: RecommendationResponseDto })
     async getRecommendations(
         @Query() queryParams: RecommendationQueryDto,
     ): Promise<RecommendationResponseDto> {
@@ -30,8 +54,11 @@ export class SpotifyController {
     }
 
     @Post('recommendations/from-search')
+    @ApiOperation({ summary: 'Search for a track and get recommendations seeded from it' })
+    @ApiBody({ type: RecommendationsFromSearchRequestDto })
+    @ApiResponse({ status: 200, type: RecommendationResponseDto })
     async getRecommendationsFromSearch(
-        @Body() body: { query: string; limit?: number },
+        @Body() body: RecommendationsFromSearchRequestDto,
     ): Promise<RecommendationResponseDto> {
         const tracks = await this.spotifyService.searchTracks({
             query: body.query,
@@ -51,6 +78,9 @@ export class SpotifyController {
     }
 
     @Post('recommendations/spice-up')
+    @ApiOperation({ summary: 'Generate recommendations to spice up a playlist' })
+    @ApiBody({ type: SpiceUpRequestDto })
+    @ApiResponse({ status: 200, type: SpiceUpResponseDto })
     async spiceUpPlaylist(
         @Body() body: SpiceUpRequestDto,
     ): Promise<SpiceUpResponseDto> {
