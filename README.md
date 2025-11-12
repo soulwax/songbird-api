@@ -1,98 +1,106 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Spotify Recommendation API Playground Server
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## Overview
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+A NestJS REST API that integrates with the Spotify Web API to search tracks and get recommendations. It uses client credentials authentication. This server acts as a proxy/wrapper around the Spotify Web API, adding token management, error handling, and a structured response format.
 
-## Description
+## Architecture & Flow
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### 1. Application Bootstrap (`main.ts`)
+- Entry point that creates the NestJS app
+- Reads `PORT` from config (defaults to 3000)
+- Starts the HTTP server
 
-## Project setup
+### 2. Module Structure
 
-```bash
-$ pnpm install
-```
+#### Root Module (`app.module.ts`)
+- ConfigModule: Global config with Joi validation
+  - Requires: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`
+  - Optional: `PORT` (default: 3000), `NODE_ENV` (default: development)
+- HttpModule: Axios for HTTP requests
+- SpotifyModule: Feature module for Spotify functionality
 
-## Compile and run the project
+#### Spotify Module (`spotify.module.ts`)
+- Controllers: `SpotifyController`
+- Providers: `SpotifyService`, `SpotifyAuthService`
+- Exports: `SpotifyService` (for use in other modules)
 
-```bash
-# development
-$ pnpm run start
+### 3. Authentication Flow (`spotify-auth.service.ts`)
 
-# watch mode
-$ pnpm run start:dev
+`SpotifyAuthService` handles OAuth 2.0 Client Credentials:
 
-# production mode
-$ pnpm run start:prod
-```
+- Token caching: Stores access token in memory
+- Expiration check: Refreshes if expired (with 60s buffer)
+- Token request: Uses `client_id:client_secret` as Basic auth
+- Returns: Access token for API requests
 
-## Run tests
+### 4. API Endpoints (`spotify.controller.ts`)
 
-```bash
-# unit tests
-$ pnpm run test
+Three endpoints under `/api/spotify`:
 
-# e2e tests
-$ pnpm run test:e2e
+#### a) `GET /api/spotify/search/tracks`
+- Query params: `query` (required), `limit` (optional)
+- Returns: Array of `TrackDto`
 
-# test coverage
-$ pnpm run test:cov
-```
+#### b) `GET /api/spotify/recommendations`
+- Query params: `seed_tracks`, `seed_artists`, `seed_genres`, `limit`, `market`, `target_danceability`, `target_popularity`
+- Returns: `RecommendationResponseDto` with seeds and tracks
 
-## Deployment
+#### c) `POST /api/spotify/recommendations/from-search`
+- Body: `{ query: string, limit?: number }`
+- Flow:
+  1. Searches for tracks matching the query
+  2. Uses the first result as a seed
+  3. Gets recommendations with default targets (danceability: 0.6, popularity: 60)
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### 5. Business Logic (`spotify.service.ts`)
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+`SpotifyService` handles Spotify API calls:
 
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
-```
+- `searchTracks()`:
+  - Validates query
+  - Gets access token
+  - Calls Spotify Search API
+  - Maps response to `TrackDto[]`
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+- `getRecommendations()`:
+  - Validates at least one seed
+  - Gets access token
+  - Builds query params (defaults: danceability 0.5, popularity 50)
+  - Calls Spotify Recommendations API
+  - Maps response to `RecommendationResponseDto`
 
-## Resources
+### 6. Data Transfer Objects (DTOs)
 
-Check out a few resources that may come in handy when working with NestJS:
+Located in `src/spotify/dtos/`:
+- `TrackDto`: Track information
+- `SearchTracksDto`: Search query parameters
+- `RecommendationQueryDto`: Recommendation query parameters
+- `RecommendationResponseDto`: Recommendation response structure
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## Request Flow Example
 
-## Support
+Example: `GET /api/spotify/search/tracks?query=beatles&limit=5`
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+1. Request hits `SpotifyController.searchTracks()`
+2. Controller calls `SpotifyService.searchTracks()`
+3. Service calls `SpotifyAuthService.getAccessToken()`
+   - Checks cached token
+   - If expired/missing, requests new token from Spotify
+4. Service makes HTTP request to `https://api.spotify.com/v1/search`
+5. Response is mapped to `TrackDto[]` and returned
 
-## Stay in touch
+## Key Features
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+- Token caching: Reduces auth requests
+- Error handling: Try-catch with logging
+- Validation: Joi for env vars, DTOs for requests
+- Modular design: Separation of concerns
+- Type safety: TypeScript with DTOs
 
-## License
+## Dependencies
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- `@nestjs/axios`: HTTP client
+- `@nestjs/config`: Configuration management
+- `joi`: Environment variable validation
+- `class-validator` & `class-transformer`: DTO validation (configured but not actively used in controllers)
