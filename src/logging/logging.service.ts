@@ -67,9 +67,15 @@ export class LoggingService {
     await this.log(payload);
   }
 
-  private serialize(value: unknown): Prisma.JsonValue | undefined {
-    if (value === undefined || value === null) {
+  private serialize(
+    value: unknown,
+  ): Prisma.NullableJsonNullValueInput | Prisma.InputJsonValue | undefined {
+    if (value === undefined) {
       return undefined;
+    }
+
+    if (value === null) {
+      return Prisma.JsonNull;
     }
 
     try {
@@ -85,7 +91,7 @@ export class LoggingService {
         }),
       );
 
-      return serialized as Prisma.JsonValue;
+      return serialized as Prisma.InputJsonValue;
     } catch (error) {
       this.logger.warn(`Unable to serialize value for API log: ${error instanceof Error ? error.message : String(error)}`);
       return undefined;
