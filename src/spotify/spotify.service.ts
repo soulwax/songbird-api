@@ -122,15 +122,25 @@ export class SpotifyService {
             if (query.seed_genres) params.seed_genres = query.seed_genres;
             if (query.market) params.market = query.market;
             if (query.target_danceability !== undefined)
-                params.target_danceability = query.target_danceability;
+                params.target_danceability = Number(query.target_danceability);
             if (query.target_popularity !== undefined)
-                params.target_popularity = query.target_popularity;
+                params.target_popularity = Number(query.target_popularity);
 
             // Default values for diversity
             if (params.target_danceability === undefined)
                 params.target_danceability = 0.5;
             if (params.target_popularity === undefined)
                 params.target_popularity = 50;
+
+            // Log request parameters for debugging
+            this.logger.debug('Requesting recommendations with params:', {
+                limit: params.limit,
+                seed_tracks: params.seed_tracks,
+                seed_artists: params.seed_artists,
+                seed_genres: params.seed_genres,
+                target_danceability: params.target_danceability,
+                target_popularity: params.target_popularity,
+            });
 
             const response = await firstValueFrom(
                 this.httpService.get(`${this.baseUrl}/recommendations`, {
@@ -179,11 +189,20 @@ export class SpotifyService {
                     throw new BadRequestException('Spotify authentication failed. Please check your credentials.');
                 } else if (status === 403) {
                     throw new BadRequestException('Spotify API access forbidden. Check your app permissions.');
+                } else if (status === 404) {
+                    // 404 usually means invalid seed track/artist/genre IDs
+                    const errorMessage = data?.error?.message || 
+                        (typeof data === 'string' && data.length > 0 ? data : null) ||
+                        'One or more seed IDs (tracks, artists, or genres) are invalid or not found. Please verify the IDs exist.';
+                    throw new BadRequestException(errorMessage);
                 } else if (status === 429) {
                     throw new BadRequestException('Rate limit exceeded. Please try again later.');
                 } else {
+                    const errorMsg = data?.error?.message || 
+                        (typeof data === 'string' && data.length > 0 ? data : null) ||
+                        'Unknown error';
                     throw new Error(
-                        `Spotify API error: ${status} ${statusText} - ${data?.error?.message || 'Unknown error'}`,
+                        `Spotify API error: ${status} ${statusText} - ${errorMsg}`,
                     );
                 }
             } else if (error.request) {
