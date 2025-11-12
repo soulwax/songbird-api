@@ -63,6 +63,46 @@ A NestJS REST API that integrates with both the **Spotify Web API** and **Last.f
   }
   ```
 
+#### `POST /api/spotify/recommendations/spice-up`
+- **Description**: Get recommendations to spice up a playlist with three diversity modes
+- **Request Body**:
+  ```json
+  {
+    "songs": [
+      {
+        "name": "string (optional)",
+        "artist": "string (optional)",
+        "album": "string (optional)"
+      }
+    ],
+    "limit": number (optional, default: 20, max: 100),
+    "mode": "strict" | "normal" | "diverse" (optional, default: "normal")
+  }
+  ```
+- **Response**: `SpiceUpResponseDto` with mode, input songs count, recommendations, and seeds
+- **Diversity Modes**:
+  - **strict**: Tighter similarity, fewer seeds (1-2 tracks, 1 artist), narrow audio feature ranges
+  - **normal**: Balanced approach (2-3 tracks, 2 artists), moderate audio feature ranges
+  - **diverse**: Maximum variety (up to 5 tracks, 3 artists), wide audio feature ranges
+- **Flow**:
+  1. Searches Spotify for each song in the array (using any combination of name, artist, album)
+  2. Collects track IDs and artist IDs from found songs
+  3. Applies diversity mode settings to recommendation parameters
+  4. Returns recommendations based on the selected mode
+- **Example**:
+  ```json
+  POST /api/spotify/recommendations/spice-up
+  {
+    "songs": [
+      { "name": "Creep", "artist": "Radiohead" },
+      { "name": "Bohemian Rhapsody", "artist": "Queen" },
+      { "album": "OK Computer" }
+    ],
+    "limit": 30,
+    "mode": "diverse"
+  }
+  ```
+
 ---
 
 ### Last.fm API Routes (`/api/lastfm`)
@@ -120,6 +160,107 @@ A NestJS REST API that integrates with both the **Spotify Web API** and **Last.f
 - **Response**: Similar tracks object
 - **Example**: `GET /api/lastfm/track/similar?artist=Radiohead&track=Creep&limit=20`
 
+#### `POST /api/lastfm/recommendations/spice-up`
+- **Description**: Get recommendations to spice up a playlist using Last.fm's similar tracks feature
+- **Request Body**:
+  ```json
+  {
+    "songs": [
+      {
+        "name": "string (optional)",
+        "artist": "string (optional)",
+        "album": "string (optional)"
+      }
+    ],
+    "limit": number (optional, default: 20, max: 100),
+    "mode": "strict" | "normal" | "diverse" (optional, default: "normal")
+  }
+  ```
+- **Response**: `LastfmSpiceUpResponseDto` with mode, input songs count, found songs count, and recommendations
+- **Diversity Modes**:
+  - **strict**: Tighter similarity, fewer similar tracks per song (10), filters by high match scores (≥0.5)
+  - **normal**: Balanced approach (20 similar tracks per song), mix of high (≥0.3) and medium (≥0.1) match scores
+  - **diverse**: Maximum variety (50 similar tracks per song), includes all match scores
+- **Flow**:
+  1. Searches Last.fm for each song in the array (using any combination of name, artist, album)
+  2. For each found song, gets similar tracks using Last.fm's similarity algorithm
+  3. Deduplicates tracks by artist+name combination
+  4. Applies diversity mode filtering based on match scores
+  5. Returns recommendations sorted by match score
+- **Example**:
+  ```json
+  POST /api/lastfm/recommendations/spice-up
+  {
+    "songs": [
+      { "name": "Creep", "artist": "Radiohead" },
+      { "name": "Bohemian Rhapsody", "artist": "Queen" },
+      { "album": "OK Computer" }
+    ],
+    "limit": 30,
+    "mode": "diverse"
+  }
+  ```
+
+---
+
+### Deezer API Routes (`/api/deezer`)
+
+#### `GET /api/deezer/search/tracks`
+- **Description**: Search for tracks on Deezer
+- **Query Parameters**:
+  - `query` (required): Search query string
+  - `limit` (optional): Number of results (default: 25, max: 25)
+- **Response**: Deezer search results object
+- **Example**: `GET /api/deezer/search/tracks?query=creep radiohead&limit=10`
+
+#### `GET /api/deezer/track/find-id`
+- **Description**: Find Deezer track ID for a given track
+- **Query Parameters**:
+  - `name` (required): Track name
+  - `artist` (optional): Artist name (improves accuracy)
+- **Response**: Object with track name, artist, and Deezer ID
+- **Example**: `GET /api/deezer/track/find-id?name=Creep&artist=Radiohead`
+
+#### `POST /api/deezer/tracks/convert`
+- **Description**: Convert an array of tracks to Deezer track IDs
+- **Request Body**:
+  ```json
+  {
+    "tracks": [
+      {
+        "name": "string (required)",
+        "artist": "string (optional)"
+      }
+    ]
+  }
+  ```
+- **Response**: `ConvertToDeezerResponseDto` with conversion statistics and track IDs
+- **Response Format**:
+  ```json
+  {
+    "converted": number,
+    "total": number,
+    "tracks": [
+      {
+        "name": "string",
+        "artist": "string",
+        "deezerId": number | null
+      }
+    ]
+  }
+  ```
+- **Example**:
+  ```json
+  POST /api/deezer/tracks/convert
+  {
+    "tracks": [
+      { "name": "Creep", "artist": "Radiohead" },
+      { "name": "Bohemian Rhapsody", "artist": "Queen" },
+      { "name": "Stairway to Heaven" }
+    ]
+  }
+  ```
+
 ## Environment Variables
 
 Create a `.env` file in the root directory with the following variables:
@@ -170,6 +311,11 @@ All variables are validated on startup using Joi schema validation.
 - Providers: `LastfmService`, `LastfmAuthService`
 - Exports: `LastfmService` (for use in other modules)
 
+#### Deezer Module (`deezer.module.ts`)
+- Controllers: `DeezerController`
+- Providers: `DeezerService`
+- Exports: `DeezerService` (for use in other modules)
+
 ### 3. Authentication
 
 #### Spotify Authentication (`spotify-auth.service.ts`)
@@ -186,6 +332,9 @@ All variables are validated on startup using Joi schema validation.
 - Query string builder: Adds API key, signature (for authenticated methods), and format
 - Helper methods: Get API key, application name, and registered user from config
 
+#### Deezer Authentication
+Deezer's public API does not require authentication for basic track search operations. The service uses the public API endpoint directly.
+
 ### 4. Business Logic
 
 #### Spotify Service (`spotify.service.ts`)
@@ -199,6 +348,12 @@ All variables are validated on startup using Joi schema validation.
 - `searchArtists()`: Searches for artists with pagination
 - `getArtistTopTracks()`: Gets top tracks for an artist
 - `getSimilarTracks()`: Gets tracks similar to a given track
+- `spiceUpPlaylist()`: Gets recommendations to spice up a playlist
+
+#### Deezer Service (`deezer.service.ts`)
+- `searchTracks()`: Searches for tracks on Deezer
+- `findTrackId()`: Finds Deezer track ID for a given track (by name and optional artist)
+- `convertTracksToDeezerIds()`: Converts an array of tracks to Deezer track IDs
 
 ### 5. Data Transfer Objects (DTOs)
 
@@ -213,6 +368,14 @@ All variables are validated on startup using Joi schema validation.
 - `ArtistInfoDto`: Artist information structure
 - `LastfmSearchTrackDto`: Search track result
 - `LastfmSearchResultDto`: Search results with pagination
+- `LastfmSongInputDto`: Song input for spice-up
+- `LastfmSpiceUpRequestDto`: Spice-up request
+- `LastfmSpiceUpResponseDto`: Spice-up response
+
+#### Deezer DTOs (`src/deezer/dtos/`)
+- `TrackToConvertDto`: Track to convert to Deezer ID
+- `ConvertToDeezerRequestDto`: Batch conversion request
+- `ConvertToDeezerResponseDto`: Conversion response with statistics
 
 ## Request Flow Examples
 
